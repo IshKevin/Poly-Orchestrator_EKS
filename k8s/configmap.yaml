@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnow-config
+  namespace: shopnow
+data:
+  # DB_HOST and REDIS_HOST are set by initial-deploy.sh from Terraform outputs.
+  # Update these values before running: kubectl apply -f k8s/configmap.yaml
+  DB_HOST: "REPLACE_WITH_RDS_ENDPOINT"
+  DB_PORT: "5432"
+  DB_NAME: "shopnow"
+  DB_USER: "shopnow"
+  REDIS_HOST: "REPLACE_WITH_REDIS_ENDPOINT"
+  REDIS_PORT: "6379"
+  # Frontend uses this to proxy API calls; it resolves via in-cluster DNS.
+  BACKEND_URL: "http://backend:5000"
