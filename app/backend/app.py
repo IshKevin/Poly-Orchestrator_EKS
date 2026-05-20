@@ -30,6 +30,7 @@ def get_db():
         user=os.environ.get("DB_USER", "shopnow"),
         password=os.environ.get("DB_PASSWORD", "shopnow123"),
         connect_timeout=5,
+        sslmode=os.environ.get("DB_SSLMODE", "prefer"),
     )
 
 
