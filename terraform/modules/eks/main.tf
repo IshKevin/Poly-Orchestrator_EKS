@@ -1,6 +1,21 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   name_prefix  = "${var.project_name}-${var.environment}"
   cluster_name = "${var.project_name}-${var.environment}-cluster"
+
+  # Normalize assumed-role ARN → IAM role ARN so aws_eks_access_entry accepts it.
+  # IAM users and roles pass through unchanged.
+  raw_caller_arn = data.aws_caller_identity.current.arn
+  caller_arn = (
+    can(regex(":assumed-role/", local.raw_caller_arn))
+    ? format(
+        "arn:aws:iam::%s:role/%s",
+        data.aws_caller_identity.current.account_id,
+        regex(":assumed-role/([^/]+)/", local.raw_caller_arn)[0]
+      )
+    : local.raw_caller_arn
+  )
 }
 
 # ── IAM: Cluster Role ─────────────────────────────────────────────────────────
@@ -76,7 +91,8 @@ resource "aws_eks_cluster" "this" {
   enabled_cluster_log_types = ["api", "audit", "authenticator"]
 
   access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"
+    authentication_mode                         = "API_AND_CONFIG_MAP"
+    bootstrap_cluster_creator_admin_permissions = true
   }
 
   tags = merge(var.tags, { Name = local.cluster_name })
@@ -155,4 +171,28 @@ resource "aws_iam_openid_connect_provider" "this" {
   url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
 
   tags = merge(var.tags, { Name = "${local.name_prefix}-oidc" })
+}
+
+# ── EKS Access Entry for the Terraform caller ─────────────────────────────────
+# Grants the IAM identity running terraform apply cluster-admin access so the
+# Kubernetes and Helm providers can authenticate via aws eks get-token.
+
+resource "aws_eks_access_entry" "terraform_caller" {
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = local.caller_arn
+  type          = "STANDARD"
+
+  tags = var.tags
+}
+
+resource "aws_eks_access_policy_association" "terraform_caller_admin" {
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = local.caller_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.terraform_caller]
 }
