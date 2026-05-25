@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnow-config
+  namespace: shopnow
+data:
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "shopnow"
+  DB_USER: "shopnow"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  BACKEND_URL: "http://backend:5000"
+  DB_SSLMODE: "disable"
