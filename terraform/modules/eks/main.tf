@@ -79,7 +79,7 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
 resource "aws_eks_cluster" "this" {
   name     = local.cluster_name
   role_arn = aws_iam_role.cluster.arn
-  version  = "1.30"
+  version  = "1.35"
 
   vpc_config {
     subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
@@ -88,11 +88,11 @@ resource "aws_eks_cluster" "this" {
     endpoint_public_access  = true
   }
 
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  enabled_cluster_log_types = []
 
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
-    bootstrap_cluster_creator_admin_permissions = true
+    bootstrap_cluster_creator_admin_permissions = false
   }
 
   tags = merge(var.tags, { Name = local.cluster_name })
@@ -141,9 +141,9 @@ resource "aws_eks_node_group" "this" {
   }
 
   scaling_config {
-    desired_size = 2
+    desired_size = 1
     min_size     = 1
-    max_size     = 4
+    max_size     = 2
   }
 
   update_config {
