@@ -48,7 +48,7 @@ terraform apply -auto-approve -input=false \
     -target=module.eks
 
 # ── Step 4: Full apply (ALB controller + Jenkins) ─────────────────────────────
-log "[4/5] Provisioning remaining infrastructure (ALB controller, Jenkins)"
+log "[4/5] Provisioning remaining infrastructure (ALB controller, bastion, Jenkins)"
 terraform apply -auto-approve -input=false
 
 # ── Step 5: Deploy to Kubernetes ──────────────────────────────────────────────
@@ -67,6 +67,9 @@ sed -i "s|REPLACE_WITH_REDIS_ENDPOINT|${REDIS_HOST}|g" "${REPO_ROOT}/k8s/configm
 sed -i "s|REPLACE_WITH_ECR_BACKEND_URL|${ECR_BACKEND}|g"   "${REPO_ROOT}/k8s/backend/deployment.yaml"
 sed -i "s|REPLACE_WITH_ECR_FRONTEND_URL|${ECR_FRONTEND}|g" "${REPO_ROOT}/k8s/frontend/deployment.yaml"
 
+log "    Installing metrics-server (required for HPA)"
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
 log "    Applying Kubernetes manifests"
 kubectl apply -f "${REPO_ROOT}/k8s/namespace.yaml"
 kubectl apply -f "${REPO_ROOT}/k8s/configmap.yaml"
@@ -83,10 +86,21 @@ log "    Fetching ALB DNS name (may take 1-2 min to provision)..."
 ALB_DNS=$(kubectl get ingress shopnow -n shopnow \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
 
+BASTION_ID=$(terraform output -raw bastion_instance_id 2>/dev/null || echo "")
+BASTION_CMD=$(terraform output -raw bastion_ssm_command 2>/dev/null || echo "")
+
 echo ""
 echo "==> Deploy complete!"
 echo "    App URL:    http://${ALB_DNS}"
 echo "    Cluster:    ${EKS_CLUSTER}"
+echo ""
+echo "    ── Database & Redis console access (private, SSM) ──"
+echo "    Bastion ID: ${BASTION_ID}"
+echo "    Open shell: ${BASTION_CMD}"
+echo "      (or: AWS Console → Systems Manager → Session Manager → Start Session)"
+echo "    In the shell:"
+echo "      psql -h \$(aws rds describe-db-instances --query 'DBInstances[0].Endpoint.Address' --output text) -U shopnow -d shopnow"
+echo "      redis-cli -h \$(aws elasticache describe-cache-clusters --show-cache-node-info --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address' --output text)"
 echo ""
 echo "    To update images in the future, push to your git branch"
 echo "    and let Jenkins trigger the pipeline, or run:"
