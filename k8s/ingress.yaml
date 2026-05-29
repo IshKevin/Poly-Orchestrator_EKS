@@ -4,7 +4,6 @@ metadata:
   name: shopnow
   namespace: shopnow
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     # IP target type registers pod IPs directly with the ALB target group,
     # bypassing NodePort and giving lower latency with accurate health checks.
@@ -15,6 +14,7 @@ metadata:
     alb.ingress.kubernetes.io/healthy-threshold-count: "2"
     alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
 spec:
+  ingressClassName: alb
   rules:
     - http:
         paths:
