@@ -6,7 +6,7 @@ metadata:
   labels:
     app: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -18,7 +18,7 @@ spec:
       containers:
         - name: backend
           # Replace ACCOUNT_ID and REGION, or let initial-deploy.sh do it.
-          image: REPLACE_WITH_ECR_BACKEND_URL:latest
+          image: 049618907165.dkr.ecr.us-east-1.amazonaws.com/shopnow-dev-backend:latest
           ports:
             - containerPort: 5000
           envFrom:
