@@ -53,6 +53,16 @@ output "oidc_provider_arn" {
   value       = module.eks.oidc_provider_arn
 }
 
+output "bastion_instance_id" {
+  description = "Bastion EC2 instance ID — connect via AWS Console → Systems Manager → Session Manager"
+  value       = module.bastion.instance_id
+}
+
+output "bastion_ssm_command" {
+  description = "AWS CLI command to open a shell on the bastion (then run psql / redis-cli)"
+  value       = module.bastion.ssm_connect_command
+}
+
 output "jenkins_url" {
   description = "Jenkins web UI URL (only set when jenkins_enabled = true)"
   value       = var.jenkins_enabled ? module.jenkins[0].jenkins_url : null

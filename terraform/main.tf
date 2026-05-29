@@ -180,6 +180,23 @@ module "alb_controller" {
   depends_on = [module.eks]
 }
 
+# ── SSM Bastion (private EC2 for console shell access to RDS/Redis) ───────────
+
+module "bastion" {
+  source = "./modules/bastion"
+
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.networking.vpc_id
+  private_subnet_id = module.networking.private_subnet_ids[0]
+  instance_type     = var.bastion_instance_type
+  rds_sg_id         = module.security.rds_sg_id
+  redis_sg_id       = module.security.redis_sg_id
+  tags              = local.common_tags
+
+  depends_on = [module.networking, module.security]
+}
+
 # ── Jenkins CI/CD (optional) ──────────────────────────────────────────────────
 
 module "jenkins" {
