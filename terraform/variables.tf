@@ -90,6 +90,14 @@ variable "redis_node_type" {
   default     = "cache.t3.micro"
 }
 
+# ── Bastion ──────────────────────────────────────────────────────────────────
+
+variable "bastion_instance_type" {
+  description = "EC2 instance type for the SSM bastion (private, no SSH key needed)"
+  type        = string
+  default     = "t3.micro"
+}
+
 # ── Jenkins ───────────────────────────────────────────────────────────────────
 
 variable "jenkins_enabled" {
