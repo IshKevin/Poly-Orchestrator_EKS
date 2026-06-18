@@ -1,11 +1,11 @@
 # Terraform
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/terraform.tfvars
-terraform/*.tfplan
-terraform/tfplan
+production/terraform/.terraform/
+production/terraform/.terraform.lock.hcl
+production/terraform/terraform.tfstate
+production/terraform/terraform.tfstate.backup
+production/terraform/terraform.tfvars
+production/terraform/*.tfplan
+production/terraform/tfplan
 
 # Node
 app/frontend/node_modules/
@@ -27,3 +27,8 @@ kubeconfig
 # OS
 .DS_Store
 Thumbs.db
+
+
+#others
+COMMAND.TXT
+LOCAL_SETUP.md

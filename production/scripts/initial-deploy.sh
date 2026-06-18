@@ -9,13 +9,13 @@ ENV_NAME="${ENV_NAME:-dev}"
 EKS_CLUSTER="${PROJECT_NAME}-${ENV_NAME}-cluster"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}/.."
+REPO_ROOT="${SCRIPT_DIR}/../.."
 
 log() { echo "==> $*"; }
 
 # ── Step 1: Create ECR repos ──────────────────────────────────────────────────
 log "[1/5] Creating ECR repositories"
-cd "${REPO_ROOT}/terraform"
+cd "${REPO_ROOT}/production/terraform"
 terraform init -input=false
 terraform apply -auto-approve -input=false -target=module.ecr
 
@@ -62,21 +62,21 @@ DB_HOST=$(terraform output -raw rds_endpoint)
 REDIS_HOST=$(terraform output -raw redis_endpoint)
 
 # Substitute placeholder values in the k8s manifests
-sed -i "s|REPLACE_WITH_RDS_ENDPOINT|${DB_HOST}|g"     "${REPO_ROOT}/k8s/configmap.yaml"
-sed -i "s|REPLACE_WITH_REDIS_ENDPOINT|${REDIS_HOST}|g" "${REPO_ROOT}/k8s/configmap.yaml"
-sed -i "s|REPLACE_WITH_ECR_BACKEND_URL|${ECR_BACKEND}|g"   "${REPO_ROOT}/k8s/backend/deployment.yaml"
-sed -i "s|REPLACE_WITH_ECR_FRONTEND_URL|${ECR_FRONTEND}|g" "${REPO_ROOT}/k8s/frontend/deployment.yaml"
+sed -i "s|REPLACE_WITH_RDS_ENDPOINT|${DB_HOST}|g"     "${REPO_ROOT}/k8s/production/configmap.yaml"
+sed -i "s|REPLACE_WITH_REDIS_ENDPOINT|${REDIS_HOST}|g" "${REPO_ROOT}/k8s/production/configmap.yaml"
+sed -i "s|REPLACE_WITH_ECR_BACKEND_URL|${ECR_BACKEND}|g"   "${REPO_ROOT}/k8s/production/backend/deployment.yaml"
+sed -i "s|REPLACE_WITH_ECR_FRONTEND_URL|${ECR_FRONTEND}|g" "${REPO_ROOT}/k8s/production/frontend/deployment.yaml"
 
 log "    Installing metrics-server (required for HPA)"
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
 log "    Applying Kubernetes manifests"
-kubectl apply -f "${REPO_ROOT}/k8s/namespace.yaml"
-kubectl apply -f "${REPO_ROOT}/k8s/configmap.yaml"
-kubectl apply -f "${REPO_ROOT}/k8s/secrets.yaml"
-kubectl apply -f "${REPO_ROOT}/k8s/backend/"
-kubectl apply -f "${REPO_ROOT}/k8s/frontend/"
-kubectl apply -f "${REPO_ROOT}/k8s/ingress.yaml"
+kubectl apply -f "${REPO_ROOT}/k8s/production/namespace.yaml"
+kubectl apply -f "${REPO_ROOT}/k8s/production/configmap.yaml"
+kubectl apply -f "${REPO_ROOT}/k8s/production/secrets.yaml"
+kubectl apply -f "${REPO_ROOT}/k8s/production/backend/"
+kubectl apply -f "${REPO_ROOT}/k8s/production/frontend/"
+kubectl apply -f "${REPO_ROOT}/k8s/production/ingress.yaml"
 
 log "    Waiting for deployments to be ready (up to 5 min)..."
 kubectl rollout status deployment/backend  -n shopnow --timeout=300s

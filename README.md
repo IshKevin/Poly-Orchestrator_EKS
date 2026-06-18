@@ -32,6 +32,47 @@ Internet
 | Autoscaling | HorizontalPodAutoscaler — min 2 / max 6 pods, 60% CPU threshold |
 | CI/CD | Jenkins (optional EC2 instance) |
 
+## Repository Structure
+
+```
+.
+├── app/                     # Application source code (shared)
+│   ├── backend/             # Python Flask API + Dockerfile
+│   ├── frontend/            # Node.js frontend + Dockerfile
+│   └── docker-compose.yml   # Quick local run (Docker Compose, no K8s)
+├── k8s/                     # All Kubernetes manifests
+│   ├── production/          # Manifests for AWS / EKS
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── secrets.yaml
+│   │   ├── ingress.yaml
+│   │   ├── backend/         # Deployment, Service, HPA
+│   │   └── frontend/        # Deployment, Service, HPA
+│   └── local/               # Manifests for Minikube
+│       ├── namespace.yaml
+│       ├── configmap.yaml
+│       ├── secrets.yaml
+│       ├── ingress.yaml
+│       ├── postgres.yaml    # Local-only — replaced by RDS on AWS
+│       ├── redis.yaml       # Local-only — replaced by ElastiCache on AWS
+│       ├── backend/
+│       └── frontend/
+├── production/              # AWS infrastructure & CI/CD
+│   ├── terraform/           # Terraform (VPC, EKS, RDS, Redis, ECR…)
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars.example
+│   │   └── modules/
+│   ├── scripts/
+│   │   └── initial-deploy.sh  # One-shot bootstrap script
+│   └── Jenkinsfile            # CI/CD pipeline definition
+└── local/                   # Local development environment
+    ├── jenkins/             # Jenkins container setup (Dockerfile + compose)
+    └── scripts/
+        └── install-jenkins.sh
+```
+
 ## Prerequisites
 
 - AWS CLI v2 configured (`aws configure`)
@@ -47,12 +88,12 @@ Internet
 
 ```bash
 # Copy and edit the example vars file
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+cp production/terraform/terraform.tfvars.example production/terraform/terraform.tfvars
 # Edit terraform.tfvars: set region, db_password, availability_zones, etc.
 
 # Run the automated bootstrap script
-chmod +x scripts/initial-deploy.sh
-./scripts/initial-deploy.sh
+chmod +x production/scripts/initial-deploy.sh
+./production/scripts/initial-deploy.sh
 ```
 
 The script performs these steps in order:
@@ -61,7 +102,7 @@ The script performs these steps in order:
 2. `docker build` + `docker push` — pushes `:latest` images to ECR
 3. `terraform apply -target=module.eks ...` — creates the EKS cluster (required before Helm/Kubernetes providers)
 4. `terraform apply` — provisions remaining resources (ALB controller, Jenkins, RDS, Redis)
-5. `kubectl apply -f k8s/` — deploys workloads
+5. `kubectl apply -f k8s/production/` — deploys workloads
 
 > **Note:** Steps 3 and 4 are split because the Helm and Kubernetes Terraform providers need the EKS cluster endpoint at plan time.
 
@@ -79,9 +120,9 @@ Open `http://<ADDRESS>` in your browser.
 
 ## Updating Images via Jenkins
 
-1. Enable Jenkins by setting `jenkins_enabled = true` in `terraform.tfvars` and running `terraform apply`.
+1. Enable Jenkins by setting `jenkins_enabled = true` in `production/terraform/terraform.tfvars` and running `terraform apply`.
 2. Open the Jenkins URL from `terraform output jenkins_url`.
-3. Complete the setup wizard and create a Pipeline job pointing at this repository with `Jenkinsfile` as the pipeline script.
+3. Complete the setup wizard and create a Pipeline job pointing at this repository with `production/Jenkinsfile` as the pipeline script path.
 4. On each push, Jenkins:
    - Runs backend (pytest) and frontend (npm test) in parallel
    - Builds and pushes tagged Docker images to ECR
@@ -100,7 +141,7 @@ export IMAGE_TAG=v1.2.3
 aws ecr get-login-password --region ${AWS_REGION} | \
     docker login --username AWS --password-stdin ${ECR_BASE}
 
-docker build -t ${ECR_BACKEND}:${IMAGE_TAG} ./app/backend && docker push ${ECR_BACKEND}:${IMAGE_TAG}
+docker build -t ${ECR_BACKEND}:${IMAGE_TAG}  ./app/backend  && docker push ${ECR_BACKEND}:${IMAGE_TAG}
 docker build -t ${ECR_FRONTEND}:${IMAGE_TAG} ./app/frontend && docker push ${ECR_FRONTEND}:${IMAGE_TAG}
 
 aws eks update-kubeconfig --region ${AWS_REGION} --name shopnow-dev-cluster
@@ -125,17 +166,17 @@ Opens the frontend at `http://localhost:3000` and the API at `http://localhost:5
 
 | File | Purpose |
 |---|---|
-| `k8s/namespace.yaml` | `shopnow` namespace |
-| `k8s/configmap.yaml` | Non-secret env vars (DB_HOST, REDIS_HOST, etc.) |
-| `k8s/secrets.yaml` | Base64-encoded DB_PASSWORD — replace with ESO in prod |
-| `k8s/backend/` | Deployment (2 replicas), ClusterIP Service, HPA |
-| `k8s/frontend/` | Deployment (2 replicas), ClusterIP Service, HPA |
-| `k8s/ingress.yaml` | ALB Ingress: `/api` → backend, `/` → frontend |
+| `k8s/production/namespace.yaml` | `shopnow` namespace |
+| `k8s/production/configmap.yaml` | Non-secret env vars (DB_HOST, REDIS_HOST, etc.) |
+| `k8s/production/secrets.yaml` | Base64-encoded DB_PASSWORD — replace with ESO in prod |
+| `k8s/production/backend/` | Deployment (2 replicas), ClusterIP Service, HPA |
+| `k8s/production/frontend/` | Deployment (2 replicas), ClusterIP Service, HPA |
+| `k8s/production/ingress.yaml` | ALB Ingress: `/api` → backend, `/` → frontend |
 
 ## Terraform Module Map
 
 ```
-terraform/
+production/terraform/
 ├── main.tf                  Root: wires modules + configures Helm/K8s providers
 ├── modules/
 │   ├── networking/          VPC, subnets (with ELB tags), IGW, NAT GW
@@ -152,9 +193,9 @@ terraform/
 
 ```bash
 # Delete Kubernetes resources first (removes the ALB)
-kubectl delete -f k8s/
+kubectl delete -f k8s/production/
 
 # Then destroy Terraform-managed infrastructure
-cd terraform
+cd production/terraform
 terraform destroy -auto-approve
 ```
