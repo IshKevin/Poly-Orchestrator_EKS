@@ -78,8 +78,8 @@
 
 - name: Generate default containerd config
   shell: containerd config default > /etc/containerd/config.toml
-  args:
-    creates: /etc/containerd/config.toml
+  changed_when: true
+  notify: Restart containerd
 
 - name: Enable SystemdCgroup in containerd config
   replace:
@@ -87,6 +87,9 @@
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
   notify: Restart containerd
+
+- name: Flush handlers to restart containerd before kubeadm
+  meta: flush_handlers
 
 - name: Ensure containerd is enabled and running
   systemd:

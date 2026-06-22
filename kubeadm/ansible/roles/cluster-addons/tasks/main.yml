@@ -22,14 +22,26 @@
     KUBECONFIG: "{{ kubeconfig }}"
   changed_when: false
 
+- name: Write nginx-gateway-fabric Helm values
+  copy:
+    dest: /tmp/ngf-values.yaml
+    content: |
+      service:
+        type: NodePort
+        ports:
+          - port: 80
+            targetPort: 80
+            protocol: TCP
+            name: http
+            nodePort: 30080
+
 - name: Install nginx-gateway-fabric (NodePort 30080, Gateway API controller)
   command: >
     helm upgrade --install ngf
     oci://ghcr.io/nginxinc/charts/nginx-gateway-fabric
     --namespace nginx-gateway --create-namespace
     --version {{ nginx_gf_version }}
-    --set service.type=NodePort
-    --set 'service.ports[0].nodePort=30080'
+    --values /tmp/ngf-values.yaml
     --wait --timeout=5m
   environment:
     KUBECONFIG: "{{ kubeconfig }}"
