@@ -1,0 +1,41 @@
+---
+# site.yml — full kubeadm cluster setup
+#
+# Required extra-vars (passed by deploy.sh):
+#   control_plane_public_ip   — public IP for kubeadm cert SANs and external kubectl
+#   control_plane_private_ip  — private IP for --apiserver-advertise-address
+#
+# Run with:
+#   ansible-playbook site.yml -i inventory.ini \
+#     -e control_plane_public_ip=<IP> \
+#     -e control_plane_private_ip=<IP>
+
+- name: Bootstrap all nodes (containerd + Kubernetes packages)
+  hosts: k8s_cluster
+  become: true
+  gather_facts: true
+  roles:
+    - common
+
+- name: Initialize control-plane
+  hosts: control_plane
+  become: true
+  gather_facts: true
+  roles:
+    - control-plane
+
+- name: Join worker nodes to the cluster
+  hosts: workers
+  become: true
+  gather_facts: true
+  roles:
+    - worker
+
+- name: Install cluster add-ons (nginx-ingress, metrics-server)
+  hosts: control_plane
+  become: false
+  gather_facts: false
+  vars:
+    kubeconfig: /home/ubuntu/.kube/config
+  roles:
+    - cluster-addons
