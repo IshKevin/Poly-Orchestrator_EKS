@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopnow-config
+  namespace: shopnow
+data:
+  # DB_HOST and REDIS_HOST are substituted by deploy.sh from Terraform outputs.
+  DB_HOST: "REPLACE_WITH_RDS_HOST"
+  DB_PORT: "5432"
+  DB_NAME: "shopnow"
+  DB_USER: "shopnow"
+  DB_SSLMODE: "require"
+  REDIS_HOST: "REPLACE_WITH_REDIS_ENDPOINT"
+  REDIS_PORT: "6379"
+  BACKEND_URL: "http://backend:5000"
