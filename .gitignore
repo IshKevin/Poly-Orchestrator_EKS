@@ -1,4 +1,4 @@
-# Terraform
+# Terraform — EKS production
 production/terraform/.terraform/
 production/terraform/.terraform.lock.hcl
 production/terraform/terraform.tfstate
@@ -6,6 +6,18 @@ production/terraform/terraform.tfstate.backup
 production/terraform/terraform.tfvars
 production/terraform/*.tfplan
 production/terraform/tfplan
+
+# Terraform — kubeadm
+kubeadm/terraform/.terraform/
+kubeadm/terraform/.terraform.lock.hcl
+kubeadm/terraform/terraform.tfstate
+kubeadm/terraform/terraform.tfstate.backup
+kubeadm/terraform/terraform.tfvars
+kubeadm/terraform/*.tfplan
+
+# Ansible generated files (created at deploy time by generate-inventory.sh)
+kubeadm/ansible/inventory.ini
+kubeadm/ansible/extravars.yml
 
 # Node
 app/frontend/node_modules/
