@@ -73,6 +73,13 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
 log "    Installing Gateway API CRDs (required for GatewayClass/Gateway/HTTPRoute)"
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
 
+log "    Installing nginx-gateway-fabric (Gateway API controller → AWS NLB)"
+helm upgrade --install ngf \
+  oci://ghcr.io/nginxinc/charts/nginx-gateway-fabric \
+  --namespace nginx-gateway --create-namespace \
+  --version 1.4.0 \
+  --wait --timeout=5m
+
 log "    Applying Kubernetes manifests"
 kubectl apply -f "${REPO_ROOT}/k8s/production/namespace.yaml"
 kubectl apply -f "${REPO_ROOT}/k8s/production/configmap.yaml"
@@ -85,9 +92,9 @@ log "    Waiting for deployments to be ready (up to 5 min)..."
 kubectl rollout status deployment/backend  -n shopnow --timeout=300s
 kubectl rollout status deployment/frontend -n shopnow --timeout=300s
 
-log "    Fetching ALB DNS name (may take 1-2 min to provision)..."
-ALB_DNS=$(kubectl get gateway shopnow-gateway -n shopnow \
-    -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || echo "provisioning...")
+log "    Fetching NLB DNS name (may take 1-2 min for AWS to provision)..."
+ALB_DNS=$(kubectl get svc -n nginx-gateway \
+    -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
 
 BASTION_ID=$(terraform output -raw bastion_instance_id 2>/dev/null || echo "")
 BASTION_CMD=$(terraform output -raw bastion_ssm_command 2>/dev/null || echo "")

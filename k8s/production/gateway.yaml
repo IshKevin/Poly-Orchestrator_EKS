@@ -1,35 +1,26 @@
-# Gateway API routing for EKS (production) — replaces the old Ingress resource.
+# Gateway API routing for EKS (production).
 #
-# Controller: AWS Load Balancer Controller v2.8+ (already installed via Terraform).
-# Gateway API CRDs must be installed on the cluster before applying this file —
-# the initial-deploy.sh script handles this automatically.
+# Controller: nginx-gateway-fabric (installed via Helm in initial-deploy.sh).
+# Traffic path: Internet → AWS NLB (auto-provisioned for LoadBalancer svc) → nginx-gateway-fabric → pods.
 #
-# Verification after apply (wait ~2 min for ALB to provision):
+# Verification after apply (wait ~2 min for NLB to provision):
 #   kubectl get gateway shopnow-gateway -n shopnow
 #   kubectl get httproute shopnow -n shopnow
 
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: alb
+  name: nginx
 spec:
-  controllerName: eks.amazonaws.com/alb
+  controllerName: gateway.nginx.org/nginx-gateway-controller
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: shopnow-gateway
   namespace: shopnow
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
-    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
-    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
-    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
 spec:
-  gatewayClassName: alb
+  gatewayClassName: nginx
   listeners:
     - name: http
       port: 80
