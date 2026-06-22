@@ -31,7 +31,7 @@
   roles:
     - worker
 
-- name: Install cluster add-ons (nginx-ingress, metrics-server)
+- name: Install cluster add-ons (nginx-gateway-fabric, metrics-server)
   hosts: control_plane
   become: false
   gather_facts: false
