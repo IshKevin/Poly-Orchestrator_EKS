@@ -1,0 +1,63 @@
+# Gateway API routing for EKS (production) — replaces the old Ingress resource.
+#
+# Controller: AWS Load Balancer Controller v2.8+ (already installed via Terraform).
+# Gateway API CRDs must be installed on the cluster before applying this file —
+# the initial-deploy.sh script handles this automatically.
+#
+# Verification after apply (wait ~2 min for ALB to provision):
+#   kubectl get gateway shopnow-gateway -n shopnow
+#   kubectl get httproute shopnow -n shopnow
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: alb
+spec:
+  controllerName: eks.amazonaws.com/alb
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shopnow-gateway
+  namespace: shopnow
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+spec:
+  gatewayClassName: alb
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shopnow
+  namespace: shopnow
+spec:
+  parentRefs:
+    - name: shopnow-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: backend
+          port: 5000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend
+          port: 3000

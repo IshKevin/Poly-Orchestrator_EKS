@@ -2,7 +2,7 @@
 kubernetes_version: "1.30"
 pod_network_cidr: "192.168.0.0/16"
 calico_version: "v3.27.3"
-ingress_nginx_version: "4.10.1"   # Helm chart version
+nginx_gf_version: "1.4.0"         # nginx-gateway-fabric Helm chart version
 metrics_server_version: "latest"
 
 # Overridden at runtime via --extra-vars in deploy.sh

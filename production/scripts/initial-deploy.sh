@@ -70,21 +70,24 @@ sed -i "s|REPLACE_WITH_ECR_FRONTEND_URL|${ECR_FRONTEND}|g" "${REPO_ROOT}/k8s/pro
 log "    Installing metrics-server (required for HPA)"
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
+log "    Installing Gateway API CRDs (required for GatewayClass/Gateway/HTTPRoute)"
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+
 log "    Applying Kubernetes manifests"
 kubectl apply -f "${REPO_ROOT}/k8s/production/namespace.yaml"
 kubectl apply -f "${REPO_ROOT}/k8s/production/configmap.yaml"
 kubectl apply -f "${REPO_ROOT}/k8s/production/secrets.yaml"
 kubectl apply -f "${REPO_ROOT}/k8s/production/backend/"
 kubectl apply -f "${REPO_ROOT}/k8s/production/frontend/"
-kubectl apply -f "${REPO_ROOT}/k8s/production/ingress.yaml"
+kubectl apply -f "${REPO_ROOT}/k8s/production/gateway.yaml"
 
 log "    Waiting for deployments to be ready (up to 5 min)..."
 kubectl rollout status deployment/backend  -n shopnow --timeout=300s
 kubectl rollout status deployment/frontend -n shopnow --timeout=300s
 
 log "    Fetching ALB DNS name (may take 1-2 min to provision)..."
-ALB_DNS=$(kubectl get ingress shopnow -n shopnow \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
+ALB_DNS=$(kubectl get gateway shopnow-gateway -n shopnow \
+    -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || echo "provisioning...")
 
 BASTION_ID=$(terraform output -raw bastion_instance_id 2>/dev/null || echo "")
 BASTION_CMD=$(terraform output -raw bastion_ssm_command 2>/dev/null || echo "")

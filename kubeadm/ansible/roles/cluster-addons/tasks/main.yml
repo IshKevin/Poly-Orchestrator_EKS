@@ -1,6 +1,6 @@
 ---
 # Runs on the control-plane node as the ubuntu user (become: false in site.yml).
-# Installs Helm, nginx-ingress (NodePort 30080/30443), and metrics-server.
+# Installs Helm, Gateway API CRDs, nginx-gateway-fabric (NodePort 30080), and metrics-server.
 
 - name: Download Helm installer
   get_url:
@@ -14,27 +14,22 @@
     creates: /usr/local/bin/helm
   become: true
 
-- name: Add ingress-nginx Helm repo
-  command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-  environment:
-    KUBECONFIG: "{{ kubeconfig }}"
-  changed_when: false
-
-- name: Update Helm repos
-  command: helm repo update
-  environment:
-    KUBECONFIG: "{{ kubeconfig }}"
-  changed_when: false
-
-- name: Install ingress-nginx (NodePort 30080/30443, no CCM required)
+- name: Install Gateway API CRDs (standard channel)
   command: >
-    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
-    --namespace ingress-nginx --create-namespace
-    --version {{ ingress_nginx_version }}
-    --set controller.service.type=NodePort
-    --set controller.service.nodePorts.http=30080
-    --set controller.service.nodePorts.https=30443
-    --set controller.admissionWebhooks.enabled=false
+    kubectl apply -f
+    https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  changed_when: false
+
+- name: Install nginx-gateway-fabric (NodePort 30080, Gateway API controller)
+  command: >
+    helm upgrade --install ngf
+    oci://ghcr.io/nginxinc/charts/nginx-gateway-fabric
+    --namespace nginx-gateway --create-namespace
+    --version {{ nginx_gf_version }}
+    --set service.type=NodePort
+    --set 'service.ports[0].nodePort=30080'
     --wait --timeout=5m
   environment:
     KUBECONFIG: "{{ kubeconfig }}"
@@ -57,9 +52,9 @@
   register: patch_result
   changed_when: patch_result.rc == 0
 
-- name: Wait for ingress-nginx controller to be ready
+- name: Wait for nginx-gateway-fabric controller to be ready
   command: >
-    kubectl rollout status deployment/ingress-nginx-controller
-    -n ingress-nginx --timeout=300s
+    kubectl rollout status deployment/ngf-nginx-gateway-fabric
+    -n nginx-gateway --timeout=300s
   environment:
     KUBECONFIG: "{{ kubeconfig }}"

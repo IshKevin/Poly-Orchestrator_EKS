@@ -31,7 +31,6 @@ terraform -chdir="${TF_DIR}" apply -auto-approve -input=false
 # ── Step 2: Build and push Docker images ──────────────────────────────────────
 
 log "[2/6] Building and pushing Docker images to ECR"
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_BACKEND=$(terraform -chdir="${TF_DIR}" output -raw ecr_backend_url)
 ECR_FRONTEND=$(terraform -chdir="${TF_DIR}" output -raw ecr_frontend_url)
 ECR_REGISTRY=$(terraform -chdir="${TF_DIR}" output -raw ecr_registry)
@@ -114,7 +113,7 @@ kubectl apply -f "${TMP_K8S}/configmap.yaml"
 kubectl apply -f "${TMP_K8S}/secrets.yaml"
 kubectl apply -f "${TMP_K8S}/backend/"
 kubectl apply -f "${TMP_K8S}/frontend/"
-kubectl apply -f "${TMP_K8S}/ingress.yaml"
+kubectl apply -f "${TMP_K8S}/gateway.yaml"
 
 rm -rf "${TMP_K8S}"
 
