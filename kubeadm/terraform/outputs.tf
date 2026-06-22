@@ -55,7 +55,13 @@ output "ecr_registry" {
 
 output "key_pair_name" {
   description = "EC2 key pair name used for SSH"
-  value       = var.key_pair_name
+  value       = aws_key_pair.nodes.key_name
+}
+
+output "private_key_pem" {
+  description = "Private key for SSH access to EC2 nodes (written to ~/.ssh/<key_pair_name>.pem by deploy scripts)"
+  value       = tls_private_key.ssh.private_key_pem
+  sensitive   = true
 }
 
 output "aws_region" {

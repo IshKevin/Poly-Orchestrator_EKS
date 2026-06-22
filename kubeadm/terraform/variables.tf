@@ -46,11 +46,6 @@ variable "node_ami" {
   default     = null
 }
 
-variable "key_pair_name" {
-  description = "Name of an existing EC2 key pair for SSH access. The private key must be at ~/.ssh/<key_pair_name>.pem on your machine."
-  type        = string
-}
-
 variable "admin_cidr" {
   description = "Your public IP in CIDR notation for SSH and API server access (e.g. 203.0.113.10/32)"
   type        = string
