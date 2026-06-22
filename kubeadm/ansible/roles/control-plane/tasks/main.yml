@@ -1,0 +1,59 @@
+---
+# Runs only on the control-plane node.
+# Requires extra-vars: control_plane_private_ip, control_plane_public_ip
+
+- name: Initialize Kubernetes cluster with kubeadm
+  command: >
+    kubeadm init
+    --pod-network-cidr={{ pod_network_cidr }}
+    --apiserver-advertise-address={{ control_plane_private_ip }}
+    --apiserver-cert-extra-sans={{ control_plane_public_ip }}
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: Create .kube directory for ubuntu user
+  file:
+    path: /home/ubuntu/.kube
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0750"
+
+- name: Copy admin.conf to ubuntu home
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/ubuntu/.kube/config
+    remote_src: true
+    owner: ubuntu
+    group: ubuntu
+    mode: "0600"
+
+- name: Patch kubeconfig to use public IP for external access
+  replace:
+    path: /home/ubuntu/.kube/config
+    regexp: "{{ control_plane_private_ip }}"
+    replace: "{{ control_plane_public_ip }}"
+
+- name: Install Calico CNI
+  become: false
+  command: >
+    kubectl apply -f
+    https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+
+- name: Wait for control-plane node to become Ready
+  become: false
+  command: >
+    kubectl wait node --all
+    --for=condition=Ready --timeout=300s
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+
+- name: Generate worker join command
+  command: kubeadm token create --print-join-command
+  register: kubeadm_join_raw
+
+- name: Expose join command as host fact for worker play
+  set_fact:
+    kubeadm_join_command: "{{ kubeadm_join_raw.stdout }}"

@@ -1,0 +1,65 @@
+---
+# Runs on the control-plane node as the ubuntu user (become: false in site.yml).
+# Installs Helm, nginx-ingress (NodePort 30080/30443), and metrics-server.
+
+- name: Download Helm installer
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get-helm-3.sh
+    mode: "0755"
+
+- name: Install Helm
+  command: /tmp/get-helm-3.sh
+  args:
+    creates: /usr/local/bin/helm
+  become: true
+
+- name: Add ingress-nginx Helm repo
+  command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  changed_when: false
+
+- name: Update Helm repos
+  command: helm repo update
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  changed_when: false
+
+- name: Install ingress-nginx (NodePort 30080/30443, no CCM required)
+  command: >
+    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
+    --namespace ingress-nginx --create-namespace
+    --version {{ ingress_nginx_version }}
+    --set controller.service.type=NodePort
+    --set controller.service.nodePorts.http=30080
+    --set controller.service.nodePorts.https=30443
+    --set controller.admissionWebhooks.enabled=false
+    --wait --timeout=5m
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+
+- name: Install metrics-server
+  command: >
+    kubectl apply -f
+    https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+
+- name: Patch metrics-server to disable TLS verification (self-signed cert in kubeadm)
+  command: >
+    kubectl patch deployment metrics-server
+    -n kube-system
+    --type=json
+    -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  register: patch_result
+  changed_when: patch_result.rc == 0
+
+- name: Wait for ingress-nginx controller to be ready
+  command: >
+    kubectl rollout status deployment/ingress-nginx-controller
+    -n ingress-nginx --timeout=300s
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"

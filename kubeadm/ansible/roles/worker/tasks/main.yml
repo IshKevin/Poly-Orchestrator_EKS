@@ -1,0 +1,8 @@
+---
+# Runs on all worker nodes.
+# Reads the join command set as a fact on the control-plane host.
+
+- name: Join worker to the Kubernetes cluster
+  command: "{{ hostvars[groups['control_plane'][0]]['kubeadm_join_command'] }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
