@@ -87,17 +87,6 @@ log "    Kubeconfig saved to ${KUBECONFIG_PATH}"
 
 log "[6/6] Deploying ShopNow application"
 
-# Create ECR image pull secret (valid for 12 hours; re-run this step to refresh)
-log "    Creating ECR image pull secret"
-aws ecr get-login-password --region "${AWS_REGION}" \
-  | kubectl create secret docker-registry ecr-secret \
-      --docker-server="${ECR_REGISTRY}" \
-      --docker-username=AWS \
-      --docker-password-stdin \
-      --namespace=shopnow \
-      --dry-run=client -o yaml \
-  | kubectl apply -f -
-
 # Substitute placeholders in a temp copy of the manifests
 TMP_K8S=$(mktemp -d)
 cp -r "${K8S_DIR}/." "${TMP_K8S}/"
@@ -109,6 +98,18 @@ sed -i "s|REPLACE_WITH_ECR_FRONTEND_URL|${ECR_FRONTEND}|g"  "${TMP_K8S}/frontend
 
 log "    Applying Kubernetes manifests"
 kubectl apply -f "${TMP_K8S}/namespace.yaml"
+
+# Create ECR image pull secret now that the namespace exists
+log "    Creating ECR image pull secret"
+ECR_PASSWORD=$(aws ecr get-login-password --region "${AWS_REGION}")
+kubectl create secret docker-registry ecr-secret \
+  --docker-server="${ECR_REGISTRY}" \
+  --docker-username=AWS \
+  --docker-password="${ECR_PASSWORD}" \
+  --namespace=shopnow \
+  --dry-run=client -o yaml \
+| kubectl apply -f -
+
 kubectl apply -f "${TMP_K8S}/configmap.yaml"
 kubectl apply -f "${TMP_K8S}/secrets.yaml"
 kubectl apply -f "${TMP_K8S}/backend/"
