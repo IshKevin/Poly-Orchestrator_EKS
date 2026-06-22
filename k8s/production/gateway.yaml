@@ -20,7 +20,7 @@ metadata:
   name: shopnow-gateway
   namespace: shopnow
 spec:
-  gatewayClassName: nginx
+  gatewayClassNameat: nginx
   listeners:
     - name: http
       port: 80
@@ -52,3 +52,6 @@ spec:
       backendRefs:
         - name: frontend
           port: 3000
+# differnet betwenn ingree and gateway
+# multiple gataway contrall and its differents types 
+# understanding gateway api  
