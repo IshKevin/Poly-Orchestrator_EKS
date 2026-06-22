@@ -261,7 +261,7 @@ resource "helm_release" "alb_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = local.sa_namespace
-  version    = "1.8.1"
+  version    = "1.9.0"
 
   set {
     name  = "clusterName"
@@ -286,6 +286,11 @@ resource "helm_release" "alb_controller" {
   set {
     name  = "vpcId"
     value = var.vpc_id
+  }
+
+  set {
+    name  = "enableGatewayApi"
+    value = "true"
   }
 
   depends_on = [kubernetes_service_account.alb_controller]
